@@ -5,89 +5,33 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path"
 
 	"github.com/sno6/brain/search"
 )
 
+const (
+	brainDir = ".brain/"
+	dataFn   = ".data"
+)
+
+// Brain is the main driver for reading, writing, and querying
+// your brain data file.
+//
+// Brain writes to the ~/.brain folder on your hard-drive, creating
+// the following files:
+//
+// - .data which stores raw cell data.
+// - .index.bleve/ which stores all index data used for querying.
+//
 type Brain struct {
-	dir    string
+	data   *os.File
 	search *search.Search
 }
 
+// New initialises a new Brain.
 func New() (*Brain, error) {
-	return newBrain()
-}
-
-func (b *Brain) Write() error {
-	// Spawn an editor to collect cell data from the user.
-	data, err := handleEditor()
+	data, dir, err := initBrain()
 	if err != nil {
-		return err
-	}
-
-	f, err := b.openData(os.O_WRONLY | os.O_APPEND)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	// The current size of the file before writing data is the offset
-	// for the next cell. This offset is used as the identifier for the index.
-	offset, err := size(f)
-	if err != nil {
-		return err
-	}
-
-	cell := NewCellFromData(offset, data)
-	if _, err := f.Write(cell.Marshal()); err != nil {
-		return err
-	}
-
-	// Now that we have written the cell to disk we can index
-	// the contents, using the offset and size of the cell as the
-	// identifier.
-	return b.search.Index(cell.Identifier(), string(data))
-}
-
-func (b *Brain) Read(id string) (string, error) {
-	offset, size, err := parseCellID(id)
-	if err != nil {
-		return "", err
-	}
-	return b.readCellData(offset, size)
-}
-
-func (b *Brain) List(query string) ([]string, error) {
-	return b.search.Query(query)
-}
-
-func (b *Brain) readCellData(offset, size int) (string, error) {
-	f, err := b.openData(os.O_RDONLY)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	buf := make([]byte, size)
-	if _, err := f.ReadAt(buf, int64(offset)); err != nil {
-		return "", err
-	}
-
-	return string(buf), nil
-}
-
-func (b *Brain) openData(flags int) (*os.File, error) {
-	return os.OpenFile(path.Join(b.dir, ".data"), flags, 0755)
-}
-
-func newBrain() (*Brain, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
-	dir := path.Join(home, ".brain/")
-	if err := initFS(dir); err != nil {
 		return nil, err
 	}
 	s, err := search.New(dir)
@@ -95,12 +39,86 @@ func newBrain() (*Brain, error) {
 		return nil, err
 	}
 	return &Brain{
-		dir:    dir,
+		data:   data,
 		search: s,
 	}, nil
 }
 
-func handleEditor() ([]byte, error) {
+// Write spawns an editor to capture user input, and pipes the bytes to
+// the .data file. It then indexes the content for future queries.
+func (b *Brain) Write() error {
+	data, err := captureEditor()
+	if err != nil {
+		return err
+	}
+
+	cell, err := b.buildCellFromData(data)
+	if err != nil {
+		return err
+	}
+	if err := b.writeCell(cell); err != nil {
+		return err
+	}
+
+	return b.search.Index(cell.Identifier(), string(data))
+}
+
+// Read reads a cell in .data by a given identifier.
+func (b *Brain) Read(id string) (*Cell, error) {
+	offset, sz, err := parseIdentifier(id)
+	if err != nil {
+		return nil, err
+	}
+	return b.readCell(offset, sz)
+}
+
+// List searches for cells within .data by checking the index against
+// a given query and returns any cells that match.
+func (b *Brain) List(query string) ([]*Cell, error) {
+	ids, err := b.search.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	cells := make([]*Cell, len(ids))
+	for i, id := range ids {
+		cell, err := b.Read(id)
+		if err != nil {
+			return nil, err
+		}
+
+		cells[i] = cell
+	}
+
+	return cells, nil
+}
+
+func (b *Brain) buildCellFromData(data []byte) (*Cell, error) {
+	offset, err := size(b.data)
+	if err != nil {
+		return nil, err
+	}
+	return NewCellFromData(offset, data), nil
+}
+
+func (b *Brain) writeCell(cell *Cell) error {
+	_, err := b.data.Write(cell.Marshal())
+	return err
+}
+
+func (b *Brain) readCell(offset, size int64) (*Cell, error) {
+	buf := make([]byte, size)
+	_, err := b.data.ReadAt(buf, offset)
+	if err != nil {
+		return nil, err
+	}
+	return NewCellFromData(offset, buf), nil
+}
+
+func captureEditor() ([]byte, error) {
 	tmp, err := os.CreateTemp("/tmp", "brain")
 	if err != nil {
 		return nil, err

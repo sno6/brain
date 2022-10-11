@@ -8,32 +8,34 @@ import (
 
 const indexFn = ".index.bleve"
 
-// Search is responsible for creating and operating indexes.
+// Search is responsible for creating and operating a bleve index.
 type Search struct {
-	dir   string
 	index bleve.Index
 }
 
-// New initialises Search with an open index reading for querying.
+// New initialises Search with an open index ready for querying.
+//
+// If it's the first time this has been called it will initialise
+// a new folder for the index under the given directory.
 func New(dir string) (*Search, error) {
 	index, err := openIndexOrInit(dir)
 	if err != nil {
 		return nil, err
 	}
-	return &Search{
-		dir:   dir,
-		index: index,
-	}, nil
+	return &Search{index: index}, nil
 }
 
 // Index indexes the data for a given id.
 //
 // The identifier we use here is a combination of the byte offset
-// and size of the data in bytes.
+// and size of the data in bytes which we can use to quickly read the
+// data from disk.
 func (s *Search) Index(id string, data string) error {
 	return s.index.Index(id, data)
 }
 
+// Query runs a match query on the index and returns the document
+// ids if there are any matches
 func (s *Search) Query(query string) ([]string, error) {
 	q := bleve.NewMatchQuery(query)
 	r := bleve.NewSearchRequest(q)
@@ -42,18 +44,21 @@ func (s *Search) Query(query string) ([]string, error) {
 		return nil, err
 	}
 
+	if res == nil || len(res.Hits) == 0 {
+		return nil, nil
+	}
+
 	var ids []string
 	for _, h := range res.Hits {
 		ids = append(ids, h.ID)
 	}
-
 	return ids, nil
 }
 
 func openIndexOrInit(dir string) (bleve.Index, error) {
-	p := path.Join(dir, indexFn)
+	fullPath := path.Join(dir, indexFn)
 
-	index, err := bleve.Open(p)
+	index, err := bleve.Open(fullPath)
 	if err != nil {
 		if err != bleve.ErrorIndexPathDoesNotExist {
 			return nil, err
@@ -61,7 +66,7 @@ func openIndexOrInit(dir string) (bleve.Index, error) {
 
 		// Initialise a new index with default mappings.
 		return bleve.New(
-			p,
+			fullPath,
 			bleve.NewIndexMapping(),
 		)
 	}
