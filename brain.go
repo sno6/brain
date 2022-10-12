@@ -79,21 +79,7 @@ func (b *Brain) List(query string) ([]*Cell, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	cells := make([]*Cell, len(ids))
-	for i, id := range ids {
-		cell, err := b.Read(id)
-		if err != nil {
-			return nil, err
-		}
-
-		cells[i] = cell
-	}
-
-	return cells, nil
+	return b.readCells(ids)
 }
 
 func (b *Brain) buildCellFromData(data []byte) (*Cell, error) {
@@ -116,6 +102,23 @@ func (b *Brain) readCell(offset, size int64) (*Cell, error) {
 		return nil, err
 	}
 	return NewCellFromData(offset, buf), nil
+}
+
+func (b *Brain) readCells(ids []string) ([]*Cell, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	cells := make([]*Cell, len(ids))
+	for i, id := range ids {
+		cell, err := b.Read(id)
+		if err != nil {
+			return nil, err
+		}
+		cells[i] = cell
+	}
+
+	return cells, nil
 }
 
 func captureEditor() ([]byte, error) {

@@ -36,6 +36,10 @@ func (c *Cell) Marshal() []byte {
 	)
 }
 
+func (c *Cell) Data() []byte {
+	return c.data
+}
+
 func parseIdentifier(id string) (int64, int64, error) {
 	ids := strings.Split(id, ":")
 	if len(ids) != 2 {

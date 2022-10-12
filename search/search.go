@@ -48,9 +48,9 @@ func (s *Search) Query(query string) ([]string, error) {
 		return nil, nil
 	}
 
-	var ids []string
-	for _, h := range res.Hits {
-		ids = append(ids, h.ID)
+	ids := make([]string, len(res.Hits))
+	for i, h := range res.Hits {
+		ids[i] = h.ID
 	}
 	return ids, nil
 }
