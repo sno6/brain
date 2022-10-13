@@ -52,6 +52,10 @@ func (b *Brain) Write() error {
 		return err
 	}
 
+	if len(data) == 0 {
+		return nil
+	}
+
 	cell, err := b.buildCellFromData(data)
 	if err != nil {
 		return err
@@ -87,7 +91,7 @@ func (b *Brain) buildCellFromData(data []byte) (*Cell, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewCellFromData(offset, data), nil
+	return NewCell(offset, data), nil
 }
 
 func (b *Brain) writeCell(cell *Cell) error {
@@ -101,7 +105,7 @@ func (b *Brain) readCell(offset, size int64) (*Cell, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewCellFromData(offset, buf), nil
+	return ParseCell(offset, buf), nil
 }
 
 func (b *Brain) readCells(ids []string) ([]*Cell, error) {

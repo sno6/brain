@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sno6/brain"
 )
 
@@ -30,7 +31,7 @@ func NewApp(brain *brain.Brain) *App {
 
 // Init initialises all sub models.
 func (a *App) Init() tea.Cmd {
-	return tea.Batch(a.search.Init(), a.cells.Init())
+	return tea.Batch(tea.EnterAltScreen, a.search.Init(), a.cells.Init())
 }
 
 // View renders the app by rendering all sub models.
@@ -48,6 +49,8 @@ func (a *App) Start() error {
 // Update is the main app update loop, it updates all sub models,
 // and handles any and all calls out to the Brain interface.
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmd := a.updateSubModels(msg)
+
 	// Exit out of the UI on ctrl+x and esc key presses.
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -56,8 +59,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Quit
 		}
 	}
-
-	cmd := a.updateSubModels(msg)
 
 	// The user has just stopped typing a query in the search bar.
 	// Send what they typed to Brain and create a tea.Cmd for the results,
@@ -76,20 +77,11 @@ func (a *App) updateSubModels(msg tea.Msg) tea.Cmd {
 	return tea.Batch(queryCmd, cellsCmd)
 }
 
-type listItems []string
+type listItems []*brain.Cell
 
 func (a *App) searchBrain(search string) func() tea.Msg {
 	return func() tea.Msg {
 		cells, _ := a.brain.List(search)
-		if len(cells) == 0 {
-			return nil
-		}
-
-		items := make(listItems, len(cells))
-		for i, c := range cells {
-			items[i] = string(c.Data())
-		}
-
-		return items
+		return listItems(cells)
 	}
 }

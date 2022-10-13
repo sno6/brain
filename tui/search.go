@@ -8,8 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type searchMessage string
-
 func getBarStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
@@ -30,23 +28,24 @@ type searchModel struct {
 }
 
 func newSearchModel() *searchModel {
-	return &searchModel{input: initInput()}
-}
+	input := textinput.New()
+	input.Placeholder = "Start typing to search cells.."
+	input.PlaceholderStyle = getBarStyle()
+	input.TextStyle = getBarStyle()
+	input.Prompt = ""
+	input.Focus()
+	input.Blink()
 
-func initInput() textinput.Model {
-	query := textinput.New()
-	query.Placeholder = "Start typing to search cells.."
-	query.PlaceholderStyle = getBarStyle()
-	query.TextStyle = getBarStyle()
-	query.Prompt = ""
-	query.Focus()
-	query.Blink()
-	return query
+	return &searchModel{input: input}
 }
 
 func (s *searchModel) Init() tea.Cmd {
 	return textinput.Blink
 }
+
+// A searchMessage contains the contents of the search bar, and is
+// sent to other models when the user stops typing briefly.
+type searchMessage string
 
 func searchCommand(val string) func() tea.Msg {
 	return func() tea.Msg {
@@ -54,33 +53,40 @@ func searchCommand(val string) func() tea.Msg {
 	}
 }
 
-func (s *searchModel) Update(msg tea.Msg) (*searchModel, tea.Cmd) {
-	var cmds []tea.Cmd
+func (s *searchModel) View() string {
+	doc := strings.Builder{}
+	doc.WriteString(statusStyle.Render("Query"))
+	doc.WriteString(s.input.View())
 
-	// On any keyboard action..
+	return barStyle.
+		Width(80).
+		Render(doc.String())
+}
+
+func (s *searchModel) Update(msg tea.Msg) (*searchModel, tea.Cmd) {
+	cmd := s.updateSubModels(msg)
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyRunes:
-			cmds = append(cmds, searchCommand(s.input.Value()))
+		case tea.KeyRunes, tea.KeyBackspace:
+			v := s.input.Value()
+			if v != "" {
+				cmd = searchCommand(s.input.Value())
+			}
 		}
 	}
 
+	return s, cmd
+}
+
+func (s *searchModel) updateSubModels(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	s.input, cmd = s.input.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return s, tea.Batch(cmds...)
+	return cmd
 }
 
 var (
 	statusStyle = getStatusStyle()
 	barStyle    = getBarStyle()
 )
-
-func (s *searchModel) View() string {
-	doc := strings.Builder{}
-	doc.WriteString(statusStyle.Render("Query"))
-	doc.WriteString(s.input.View())
-	return barStyle.Width(100).Render(doc.String())
-}

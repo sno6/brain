@@ -17,12 +17,20 @@ type Cell struct {
 	data   []byte
 }
 
-// NewCellFromData returns a new cell from data.
-func NewCellFromData(offset int64, data []byte) *Cell {
+// NewCell returns a new cell with the given data.
+func NewCell(offset int64, data []byte) *Cell {
 	return &Cell{
 		offset: offset,
 		ts:     time.Now().UTC().Unix(),
 		data:   data,
+	}
+}
+
+func ParseCell(offset int64, data []byte) *Cell {
+	return &Cell{
+		offset: offset,
+		data:   data,
+		ts:     parseTimestamp(data),
 	}
 }
 
@@ -32,12 +40,21 @@ func (c *Cell) Identifier() string {
 
 func (c *Cell) Marshal() []byte {
 	return []byte(
-		fmt.Sprintf("%d %s\n", c.ts, c.data),
+		fmt.Sprintf("%d %s", c.ts, c.data),
 	)
 }
 
 func (c *Cell) Data() []byte {
 	return c.data
+}
+
+func (c *Cell) Timestamp() time.Time {
+	return time.Unix(c.ts, 0)
+}
+
+func parseTimestamp(data []byte) int64 {
+	n, _ := strconv.ParseInt(string(data[:10]), 10, 64)
+	return n
 }
 
 func parseIdentifier(id string) (int64, int64, error) {

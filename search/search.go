@@ -39,6 +39,10 @@ func (s *Search) Index(id string, data string) error {
 func (s *Search) Query(query string) ([]string, error) {
 	q := bleve.NewMatchQuery(query)
 	r := bleve.NewSearchRequest(q)
+
+	// How many do we want to return in a single request?
+	r.Size = 100
+
 	res, err := s.index.Search(r)
 	if err != nil {
 		return nil, err
