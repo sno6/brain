@@ -23,6 +23,11 @@ func getStatusStyle() lipgloss.Style {
 		MarginRight(1)
 }
 
+var (
+	statusStyle = getStatusStyle()
+	barStyle    = getBarStyle()
+)
+
 type searchModel struct {
 	input textinput.Model
 }
@@ -85,8 +90,3 @@ func (s *searchModel) updateSubModels(msg tea.Msg) tea.Cmd {
 	s.input, cmd = s.input.Update(msg)
 	return cmd
 }
-
-var (
-	statusStyle = getStatusStyle()
-	barStyle    = getBarStyle()
-)

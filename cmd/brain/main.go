@@ -14,18 +14,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if len(os.Args) == 1 {
-		if err := b.Write(); err != nil {
-			log.Fatal(err)
-		}
-
-		return
+	var app *tui.App
+	if os.Args[1] == "write" {
+		app = tui.NewApp(b, tui.PageWrite)
+	} else if os.Args[1] == "read" {
+		app = tui.NewApp(b, tui.PageSearch)
+	} else {
+		panic("undefined")
 	}
 
-	if os.Args[1] == "read" {
-		app := tui.NewApp(b)
-		if err := app.Start(); err != nil {
-			log.Fatal(err)
-		}
+	if err := app.Start(); err != nil {
+		log.Fatal(err)
 	}
 }

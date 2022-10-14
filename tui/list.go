@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -18,8 +19,6 @@ var (
 
 	titleStyle = lipgloss.
 			NewStyle().
-			Background(lipgloss.Color("62")).
-			Foreground(lipgloss.Color("230")).
 			Padding(0, 1)
 
 	itemDateStyle = lipgloss.
@@ -38,20 +37,25 @@ var (
 // A cellListModel is a wrapper around a list.Model that displays cells.
 type cellListModel struct {
 	cells list.Model
+	page  int
 }
 
 func newCellListModel() *cellListModel {
 	cells := list.New(nil, cellDelegate{}, 60, 0)
-	cells.Title = "Cells"
+	cells.Title = "🧠 Brain"
 	cells.Styles.TitleBar = titleBarStyle
 	cells.Styles.Title = titleStyle
 	cells.Paginator.PerPage = 10
 	cells.Styles.PaginationStyle.PaddingBottom(1)
-	cells.DisableQuitKeybindings()
 	cells.SetShowTitle(true)
 	cells.SetFilteringEnabled(false)
 	cells.SetShowStatusBar(false)
 	cells.SetShowHelp(false)
+
+	// Disable next/prev pagination.
+	cells.KeyMap.NextPage = key.NewBinding()
+	cells.KeyMap.PrevPage = key.NewBinding()
+	cells.DisableQuitKeybindings()
 
 	return &cellListModel{cells: cells}
 }
@@ -60,8 +64,37 @@ func (c *cellListModel) Init() tea.Cmd {
 	return nil
 }
 
+type viewCellMessage string
+
+func viewCellCommand(content string) func() tea.Msg {
+	return func() tea.Msg {
+		return viewCellMessage(content)
+	}
+}
+
 func (c *cellListModel) Update(msg tea.Msg) (*cellListModel, tea.Cmd) {
 	cmd := c.updateSubModels(msg)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			c, ok := c.cells.SelectedItem().(cell)
+			if ok {
+				cmd = tea.Batch(cmd, viewCellCommand(c.data), changePage(PageView))
+			}
+		}
+	}
+
+	// Figure out if the page has changed so we can update the list size.
+	if c.page != c.cells.Paginator.Page {
+		c.page = c.cells.Paginator.Page
+
+		padding := 3
+		itemLen := len(c.cells.Items())
+		pageLen := c.cells.Paginator.ItemsOnPage(itemLen)
+		c.cells.SetHeight(pageLen + padding)
+	}
 
 	// Search has found some new items, we need to update
 	// our internal model and render the list items.
@@ -79,6 +112,12 @@ func (c *cellListModel) updateSubModels(msg tea.Msg) tea.Cmd {
 }
 
 func (c *cellListModel) updateListItems(items listItems) {
+	if len(items) == 0 {
+		c.cells.SetItems(nil)
+		c.cells.SetHeight(0)
+		return
+	}
+
 	cells := make([]list.Item, len(items))
 	for i, item := range items {
 		cells[i] = cell{
@@ -87,9 +126,9 @@ func (c *cellListModel) updateListItems(items listItems) {
 		}
 	}
 
-	padding := 4
+	padding := 3
 	c.cells.SetItems(cells)
-	c.cells.SetHeight(max(len(cells), 10) + padding)
+	c.cells.SetHeight(len(cells) + padding)
 }
 
 func (c *cellListModel) View() string {
@@ -154,11 +193,4 @@ func preview(data string) string {
 	}
 
 	return prev + "..."
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
