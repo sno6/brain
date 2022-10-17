@@ -7,5 +7,6 @@ Brain is a terminal tool for knowledge workers that aids with information storag
 ## Download
 
 ```sh
+brew tap sno6/brain
 brew install brain
 ```
