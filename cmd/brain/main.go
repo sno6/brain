@@ -9,20 +9,25 @@ import (
 )
 
 func main() {
+	var arg string
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
+
+	page := tui.PageIndex
+	switch arg {
+	case "read":
+		page = tui.PageSearch
+	case "write":
+		page = tui.PageWrite
+	}
+
 	b, err := brain.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var app *tui.App
-	if os.Args[1] == "write" {
-		app = tui.NewApp(b, tui.PageWrite)
-	} else if os.Args[1] == "read" {
-		app = tui.NewApp(b, tui.PageSearch)
-	} else {
-		panic("undefined")
-	}
-
+	app := tui.NewApp(b, page)
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}

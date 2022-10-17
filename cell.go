@@ -14,11 +14,11 @@ import (
 type Cell struct {
 	offset int64
 	ts     int64
-	data   []byte
+	data   string
 }
 
 // NewCell returns a new cell with the given data.
-func NewCell(offset int64, data []byte) *Cell {
+func NewCell(offset int64, data string) *Cell {
 	return &Cell{
 		offset: offset,
 		ts:     time.Now().UTC().Unix(),
@@ -26,7 +26,7 @@ func NewCell(offset int64, data []byte) *Cell {
 	}
 }
 
-func ParseCell(offset int64, data []byte) *Cell {
+func ParseCell(offset int64, data string) *Cell {
 	return &Cell{
 		offset: offset,
 		data:   data,
@@ -44,7 +44,7 @@ func (c *Cell) Marshal() []byte {
 	)
 }
 
-func (c *Cell) Data() []byte {
+func (c *Cell) Data() string {
 	return c.data
 }
 
@@ -52,8 +52,8 @@ func (c *Cell) Timestamp() time.Time {
 	return time.Unix(c.ts, 0)
 }
 
-func parseTimestamp(data []byte) int64 {
-	n, _ := strconv.ParseInt(string(data[:10]), 10, 64)
+func parseTimestamp(data string) int64 {
+	n, _ := strconv.ParseInt(data[:10], 10, 64)
 	return n
 }
 

@@ -4,9 +4,19 @@ import (
 	"path"
 
 	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
 )
 
 const indexFn = ".index.bleve"
+
+// Mode is an enum that defines the type of search to run against the index.
+type Mode uint8
+
+const (
+	Match Mode = iota
+	Regexp
+	Fuzzy
+)
 
 // Search is responsible for creating and operating a bleve index.
 type Search struct {
@@ -36,8 +46,19 @@ func (s *Search) Index(id string, data string) error {
 
 // Query runs a match query on the index and returns the document
 // ids if there are any matches
-func (s *Search) Query(query string) ([]string, error) {
-	q := bleve.NewMatchQuery(query)
+func (s *Search) Query(qs string, mode Mode) ([]string, error) {
+	var q query.Query
+	switch mode {
+	case Match:
+		q = bleve.NewMatchQuery(qs)
+	case Regexp:
+		q = bleve.NewRegexpQuery(qs)
+	case Fuzzy:
+		q = bleve.NewFuzzyQuery(qs)
+	default:
+		q = bleve.NewMatchQuery(qs)
+	}
+
 	r := bleve.NewSearchRequest(q)
 
 	// How many do we want to return in a single request?
@@ -56,6 +77,7 @@ func (s *Search) Query(query string) ([]string, error) {
 	for i, h := range res.Hits {
 		ids[i] = h.ID
 	}
+
 	return ids, nil
 }
 

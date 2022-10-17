@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	titleBarStyle = lipgloss.
-			NewStyle().
-			Padding(0, 0, 1)
-
-	titleStyle = lipgloss.
-			NewStyle().
-			Padding(0, 1)
+	titleStyle = lipgloss.NewStyle().
+			MarginLeft(0).
+			Padding(0, 2).
+			Italic(true).
+			Bold(true).
+			Foreground(lipgloss.Color("#FFF")).
+			Background(lipgloss.Color("#F25D94"))
 
 	itemDateStyle = lipgloss.
 			NewStyle().
@@ -42,9 +42,9 @@ type cellListModel struct {
 
 func newCellListModel() *cellListModel {
 	cells := list.New(nil, cellDelegate{}, 60, 0)
-	cells.Title = "🧠 Brain"
-	cells.Styles.TitleBar = titleBarStyle
+	cells.Title = "Brain 🧠"
 	cells.Styles.Title = titleStyle
+	cells.Styles.TitleBar = lipgloss.NewStyle().MarginBottom(1)
 	cells.Paginator.PerPage = 10
 	cells.Styles.PaginationStyle.PaddingBottom(1)
 	cells.SetShowTitle(true)
@@ -62,14 +62,6 @@ func newCellListModel() *cellListModel {
 
 func (c *cellListModel) Init() tea.Cmd {
 	return nil
-}
-
-type viewCellMessage string
-
-func viewCellCommand(content string) func() tea.Msg {
-	return func() tea.Msg {
-		return viewCellMessage(content)
-	}
 }
 
 func (c *cellListModel) Update(msg tea.Msg) (*cellListModel, tea.Cmd) {
@@ -121,7 +113,7 @@ func (c *cellListModel) updateListItems(items listItems) {
 	cells := make([]list.Item, len(items))
 	for i, item := range items {
 		cells[i] = cell{
-			data: string(item.Data()),
+			data: item.Data(),
 			ts:   item.Timestamp(),
 		}
 	}

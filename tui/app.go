@@ -7,46 +7,30 @@ import (
 	"github.com/sno6/brain"
 )
 
-// Page is an enum type that we use to determine what
-// components to render. This type can be sent as a tea.Msg
-// from sub-components to change the page.
-type Page uint8
-
-const (
-	PageSearch Page = iota
-	PageWrite
-	PageView
-)
-
-func changePage(p Page) func() tea.Msg {
-	return func() tea.Msg {
-		return p
-	}
-}
-
 // Base app styling for the whole user interface.
-var appStyle = lipgloss.
-	NewStyle().
-	Padding(1, 2)
+var appStyle = lipgloss.NewStyle().Padding(1, 2)
 
 // App is the entrypoint for the Brain UI.
 type App struct {
 	brain *brain.Brain
 
-	curPage  Page
-	search   *searchModel
-	cellView *cellViewModel
-	cellList *cellListModel
+	curPage                     Page
+	index                       *indexModel
+	search                      *searchModel
+	cellList                    *cellListModel
+	writeCellView, readCellView *cellViewModel
 }
 
 // NewApp returns a new tea.Model with all sub models.
 func NewApp(brain *brain.Brain, startingPage Page) *App {
 	return &App{
-		brain:    brain,
-		curPage:  startingPage,
-		search:   newSearchModel(),
-		cellView: newCellViewModel(startingPage == PageWrite),
-		cellList: newCellListModel(),
+		brain:         brain,
+		curPage:       startingPage,
+		index:         newIndexModel(),
+		search:        newSearchModel(),
+		cellList:      newCellListModel(),
+		writeCellView: newCellViewModel(PageWrite),
+		readCellView:  newCellViewModel(PageView),
 	}
 }
 
@@ -54,21 +38,28 @@ func NewApp(brain *brain.Brain, startingPage Page) *App {
 func (a *App) Init() tea.Cmd {
 	return tea.Batch(
 		tea.EnterAltScreen,
+		a.index.Init(),
 		a.search.Init(),
 		a.cellList.Init(),
-		a.cellView.Init(),
+		a.readCellView.Init(),
+		a.writeCellView.Init(),
 	)
 }
 
 // View renders the app by rendering all sub models.
 func (a *App) View() string {
-	if a.curPage == PageSearch {
-		return appStyle.Render(
-			lipgloss.JoinVertical(0, a.cellList.View(), a.search.View()),
-		)
+	switch a.curPage {
+	case PageIndex:
+		return appStyle.Render(a.index.View())
+	case PageSearch:
+		s := lipgloss.JoinVertical(0, a.cellList.View(), a.search.View())
+		return appStyle.Render(s)
+	case PageWrite:
+		return appStyle.Render(a.writeCellView.View())
+	case PageView:
+		return appStyle.Render(a.readCellView.View())
 	}
-
-	return appStyle.Render(a.cellView.View())
+	return "<unknown page>"
 }
 
 // Start runs the Brain user interface.
@@ -93,39 +84,49 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.curPage = p
 	}
 
+	// The user has clicked ctrl+s on the write cell page.
+	if c, ok := msg.(savedCell); ok {
+		a.brain.Write(string(c))
+		return a, tea.Quit
+	}
+
 	cmd := a.updateSubModels(msg)
 
 	// The user has just stopped typing a query in the search bar.
 	// Send what they typed to Brain and create a tea.Cmd for the results,
 	// so that cells can listen and display the findings.
 	if s, ok := msg.(searchMessage); ok {
-		cmd = tea.Batch(cmd, a.searchBrain(string(s)))
+		cmd = tea.Batch(cmd, a.searchBrain(s))
 	}
 
 	return a, cmd
 }
 
 func (a *App) updateSubModels(msg tea.Msg) tea.Cmd {
-	var (
-		queryCmd, cellListCmd, cellViewCmd tea.Cmd
-	)
+	var cmd tea.Cmd
 
 	switch a.curPage {
+	case PageIndex:
+		a.index, cmd = a.index.Update(msg)
+	case PageWrite:
+		a.writeCellView, cmd = a.writeCellView.Update(msg)
+	case PageView:
+		a.readCellView, cmd = a.readCellView.Update(msg)
 	case PageSearch:
-		a.search, queryCmd = a.search.Update(msg)
+		var searchCmd, cellListCmd tea.Cmd
+		a.search, searchCmd = a.search.Update(msg)
 		a.cellList, cellListCmd = a.cellList.Update(msg)
-	case PageView, PageWrite:
-		a.cellView, cellViewCmd = a.cellView.Update(msg)
+		cmd = tea.Batch(cmd, searchCmd, cellListCmd)
 	}
 
-	return tea.Batch(queryCmd, cellListCmd, cellViewCmd)
+	return cmd
 }
 
 type listItems []*brain.Cell
 
-func (a *App) searchBrain(search string) func() tea.Msg {
+func (a *App) searchBrain(sm searchMessage) func() tea.Msg {
 	return func() tea.Msg {
-		cells, _ := a.brain.List(search)
+		cells, _ := a.brain.List(sm.val, sm.mode)
 		return listItems(cells)
 	}
 }

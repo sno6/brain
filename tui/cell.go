@@ -1,23 +1,28 @@
 package tui
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
+var cellTitleStyle = lipgloss.NewStyle().
+	MarginLeft(1).
+	Padding(0, 2).
+	Italic(true).
+	Bold(true).
+	Foreground(lipgloss.Color("#FFF")).
+	Background(lipgloss.Color("#F25D94"))
+
 type cellViewModel struct {
 	text textarea.Model
 	help *helpModel
-
-	editable bool
+	page Page
 }
 
-func newCellViewModel(editable bool) *cellViewModel {
+func newCellViewModel(page Page) *cellViewModel {
 	text := textarea.New()
-	text.SetWidth(156)
+	text.SetWidth(155)
 	text.SetHeight(35)
 
 	text.Prompt = ""
@@ -35,16 +40,16 @@ func newCellViewModel(editable bool) *cellViewModel {
 
 	text.BlurredStyle.Base = text.FocusedStyle.Base
 
-	if editable {
+	if page == PageWrite {
 		text.Focus()
 	} else {
 		text.Blur()
 	}
 
 	return &cellViewModel{
-		text:     text,
-		help:     newHelpModel(),
-		editable: editable,
+		text: text,
+		help: newHelpModel(page),
+		page: page,
 	}
 }
 
@@ -54,29 +59,37 @@ func (c *cellViewModel) Init() tea.Cmd {
 
 // View renders the app by rendering all sub models.
 func (c *cellViewModel) View() string {
-	var doc strings.Builder
-
-	doc.WriteString("🧠 Brain\n")
-	doc.WriteString(c.text.View())
-	doc.WriteString(c.help.View())
-
-	return doc.String()
+	title := cellTitleStyle.Render("Brain 🧠")
+	return lipgloss.JoinVertical(0, title, c.text.View(), c.help.View())
 }
 
 func (c *cellViewModel) Update(msg tea.Msg) (*cellViewModel, tea.Cmd) {
 	// Exit out of the full cell view on 'q' keypress.
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyRunes:
-			if msg.String() == "q" {
-				return c, changePage(PageSearch)
+	if c.page == PageView {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyRunes:
+				if msg.String() == "q" {
+					// TODO: prev page?
+					return c, changePage(PageSearch)
+				}
+			}
+		}
+	}
+
+	if c.page == PageWrite {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyCtrlS: // CMD?
+				return c, saveCell(savedCell(c.text.Value()))
 			}
 		}
 	}
 
 	if s, ok := msg.(viewCellMessage); ok {
-		c.text.SetValue(string(s))
+		c.text.SetValue(string(s[11:]))
 	}
 
 	var helpCmd, textCmd tea.Cmd
