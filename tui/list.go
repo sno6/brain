@@ -15,8 +15,7 @@ import (
 var (
 	titleStyle = lipgloss.NewStyle().
 			MarginLeft(0).
-			Padding(0, 2).
-			Italic(true).
+			Padding(0, 3).
 			Bold(true).
 			Foreground(lipgloss.Color("#FFF")).
 			Background(lipgloss.Color("#F25D94"))
@@ -78,16 +77,6 @@ func (c *cellListModel) Update(msg tea.Msg) (*cellListModel, tea.Cmd) {
 		}
 	}
 
-	// Figure out if the page has changed so we can update the list size.
-	if c.page != c.cells.Paginator.Page {
-		c.page = c.cells.Paginator.Page
-
-		padding := 3
-		itemLen := len(c.cells.Items())
-		pageLen := c.cells.Paginator.ItemsOnPage(itemLen)
-		c.cells.SetHeight(pageLen + padding)
-	}
-
 	// Search has found some new items, we need to update
 	// our internal model and render the list items.
 	if items, ok := msg.(listItems); ok {
@@ -104,12 +93,6 @@ func (c *cellListModel) updateSubModels(msg tea.Msg) tea.Cmd {
 }
 
 func (c *cellListModel) updateListItems(items listItems) {
-	if len(items) == 0 {
-		c.cells.SetItems(nil)
-		c.cells.SetHeight(0)
-		return
-	}
-
 	cells := make([]list.Item, len(items))
 	for i, item := range items {
 		cells[i] = cell{
@@ -118,9 +101,11 @@ func (c *cellListModel) updateListItems(items listItems) {
 		}
 	}
 
-	padding := 3
 	c.cells.SetItems(cells)
-	c.cells.SetHeight(len(cells) + padding)
+}
+
+func (c *cellListModel) setDimensions(width, height int) {
+	c.cells.SetSize(width, height-5)
 }
 
 func (c *cellListModel) View() string {
@@ -140,8 +125,8 @@ func (c cell) FilterValue() string { return "" }
 // cell in a list.Model.
 type cellDelegate struct{}
 
-func (d cellDelegate) Height() int                             { return 1 }
-func (d cellDelegate) Spacing() int                            { return 0 }
+func (d cellDelegate) Height() int                             { return 2 }
+func (d cellDelegate) Spacing() int                            { return 1 }
 func (d cellDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 func (d cellDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	item, ok := listItem.(cell)
@@ -171,18 +156,20 @@ func preview(data string) string {
 	// Exclude the date portion of the cell.
 	data = data[11:]
 
-	if len(data) < previewLength {
-		return data
-	}
-
-	var prev string
 	if nl := strings.Index(data, "\n"); nl > -1 {
+		var prev string
 		if nl > previewLength {
 			prev = data[:previewLength]
 		} else {
 			prev = data[:nl]
 		}
+
+		return prev + "..."
 	}
 
-	return prev + "..."
+	if len(data) < previewLength {
+		return data
+	}
+
+	return data[:previewLength] + "..."
 }

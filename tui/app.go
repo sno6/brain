@@ -15,6 +15,7 @@ type App struct {
 	brain *brain.Brain
 
 	curPage                     Page
+	width, height               int
 	index                       *indexModel
 	search                      *searchModel
 	cellList                    *cellListModel
@@ -72,6 +73,8 @@ func (a *App) Start() error {
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Exit out of the UI on ctrl+x and esc key presses.
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		a.propagateDimensions(msg.Width, msg.Height)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -120,6 +123,17 @@ func (a *App) updateSubModels(msg tea.Msg) tea.Cmd {
 	}
 
 	return cmd
+}
+
+func (a *App) propagateDimensions(width, height int) {
+	if a.width == width && a.height == height {
+		return
+	}
+
+	a.search.setDimensions(width, height)
+	a.writeCellView.setDimensions(width, height)
+	a.readCellView.setDimensions(width, height)
+	a.cellList.setDimensions(width, height)
 }
 
 type listItems []*brain.Cell

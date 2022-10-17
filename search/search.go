@@ -14,8 +14,8 @@ type Mode uint8
 
 const (
 	Match Mode = iota
-	Regexp
 	Fuzzy
+	Wildcard
 )
 
 // Search is responsible for creating and operating a bleve index.
@@ -51,8 +51,8 @@ func (s *Search) Query(qs string, mode Mode) ([]string, error) {
 	switch mode {
 	case Match:
 		q = bleve.NewMatchQuery(qs)
-	case Regexp:
-		q = bleve.NewRegexpQuery(qs)
+	case Wildcard:
+		q = bleve.NewWildcardQuery(qs)
 	case Fuzzy:
 		q = bleve.NewFuzzyQuery(qs)
 	default:

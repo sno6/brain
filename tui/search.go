@@ -24,6 +24,8 @@ type searchModel struct {
 	input textinput.Model
 	help  *helpModel
 
+	width, height int
+
 	currModeIdx int
 	modes       []searchMode
 }
@@ -43,10 +45,10 @@ func newSearchModel() *searchModel {
 			mode:        search.Fuzzy,
 		},
 		{
-			title:       "Regexp",
-			placeholder: "Search via regular expressions..",
+			title:       "Wildcard",
+			placeholder: "Search using '?' and '*' wildcards..",
 			color:       "55",
-			mode:        search.Regexp,
+			mode:        search.Wildcard,
 		},
 	}
 
@@ -76,7 +78,7 @@ func (s *searchModel) View() string {
 
 	return lipgloss.JoinVertical(
 		0,
-		barStyle.Width(80).Render(title+input)+"\n",
+		barStyle.Width(s.width-3).Render(title+input)+"\n",
 		s.help.View(),
 	)
 }
@@ -89,6 +91,7 @@ func (s *searchModel) Update(msg tea.Msg) (*searchModel, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyTab:
 			s.toggleMode()
+			cmd = tea.Batch(searchCommand(s.modes[s.currModeIdx].mode, s.input.Value()))
 		case tea.KeyRunes, tea.KeyBackspace:
 			v := s.input.Value()
 			if v == "" {
@@ -116,6 +119,10 @@ func (s *searchModel) toggleMode() {
 	// else will change.
 	newMode := s.modes[s.currModeIdx]
 	s.input.Placeholder = newMode.placeholder
+}
+
+func (s *searchModel) setDimensions(width, height int) {
+	s.width, s.height = width, height
 }
 
 func (s *searchModel) updateSubModels(msg tea.Msg) tea.Cmd {

@@ -6,13 +6,19 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var cellTitleStyle = lipgloss.NewStyle().
-	MarginLeft(1).
-	Padding(0, 2).
-	Italic(true).
-	Bold(true).
-	Foreground(lipgloss.Color("#FFF")).
-	Background(lipgloss.Color("#F25D94"))
+var (
+	textCursorStyle = lipgloss.
+			NewStyle().
+			Foreground(lipgloss.Color("212"))
+
+	focusedCursorLineStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("57")).
+				Foreground(lipgloss.Color("230"))
+
+	focusedStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("238"))
+)
 
 type cellViewModel struct {
 	text textarea.Model
@@ -22,23 +28,13 @@ type cellViewModel struct {
 
 func newCellViewModel(page Page) *cellViewModel {
 	text := textarea.New()
-	text.SetWidth(155)
-	text.SetHeight(35)
 
 	text.Prompt = ""
-	text.Cursor.Style = lipgloss.
-		NewStyle().
-		Foreground(lipgloss.Color("212"))
-
-	text.FocusedStyle.CursorLine = lipgloss.NewStyle().
-		Background(lipgloss.Color("57")).
-		Foreground(lipgloss.Color("230"))
-
-	text.FocusedStyle.Base = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("238"))
-
+	text.Cursor.Style = textCursorStyle
+	text.FocusedStyle.CursorLine = focusedCursorLineStyle
+	text.FocusedStyle.Base = focusedStyle
 	text.BlurredStyle.Base = text.FocusedStyle.Base
+	text.CharLimit = -1
 
 	if page == PageWrite {
 		text.Focus()
@@ -59,7 +55,7 @@ func (c *cellViewModel) Init() tea.Cmd {
 
 // View renders the app by rendering all sub models.
 func (c *cellViewModel) View() string {
-	title := cellTitleStyle.Render("Brain 🧠")
+	title := titleStyle.Render("Brain 🧠")
 	return lipgloss.JoinVertical(0, title, c.text.View(), c.help.View())
 }
 
@@ -96,4 +92,9 @@ func (c *cellViewModel) Update(msg tea.Msg) (*cellViewModel, tea.Cmd) {
 	c.help, helpCmd = c.help.Update(msg)
 	c.text, textCmd = c.text.Update(msg)
 	return c, tea.Batch(helpCmd, textCmd)
+}
+
+func (c *cellViewModel) setDimensions(width, height int) {
+	c.text.SetWidth(width - 5)
+	c.text.SetHeight(int(float64(height) * 0.7))
 }
