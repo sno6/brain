@@ -97,9 +97,7 @@ func (s *searchModel) Update(msg tea.Msg) (*searchModel, tea.Cmd) {
 			if v == "" {
 				return s, cmd
 			}
-
-			cmd = tea.Batch(
-				searchCommand(s.modes[s.currModeIdx].mode, s.input.Value()))
+			cmd = tea.Batch(searchCommand(s.modes[s.currModeIdx].mode, s.input.Value()))
 		}
 	}
 

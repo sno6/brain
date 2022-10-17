@@ -37,8 +37,8 @@ func buildKeyMap(page Page) keyMap {
 	return keyMap{
 		page: page,
 		Save: key.NewBinding(
-			key.WithKeys("cmd+s", "cmd+s"),
-			key.WithHelp("cmd+s", "save"),
+			key.WithKeys("ctrl+s", "ctrl+s"),
+			key.WithHelp("ctrl+s", "save"),
 		),
 		ToggleSearch: key.NewBinding(
 			key.WithKeys("tab", "tab"),
