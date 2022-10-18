@@ -33,21 +33,27 @@ type searchModel struct {
 func newSearchModel() *searchModel {
 	modes := []searchMode{
 		{
-			title:       "Match",
+			title:       "Keyword",
 			placeholder: "Search via keyword matching..",
-			color:       "62",
-			mode:        search.Match,
+			color:       "#684EFF",
+			mode:        search.Keyword,
+		},
+		{
+			title:       "Phrase",
+			placeholder: "Search via a phrase..",
+			color:       "#9F2EEB",
+			mode:        search.Phrase,
 		},
 		{
 			title:       "Fuzzy",
 			placeholder: "Search via fuzzy word matching..",
-			color:       "22",
+			color:       "#09ae70",
 			mode:        search.Fuzzy,
 		},
 		{
 			title:       "Wildcard",
 			placeholder: "Search using '?' and '*' wildcards..",
-			color:       "55",
+			color:       "#F25D94",
 			mode:        search.Wildcard,
 		},
 	}
@@ -131,15 +137,15 @@ func (s *searchModel) updateSubModels(msg tea.Msg) tea.Cmd {
 
 func getBarStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-		Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
+		Foreground(lipgloss.AdaptiveColor{Light: "#FFF", Dark: "#FFF"}).
+		Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#262626"})
 }
 
 func getStatusStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Inherit(getBarStyle()).
-		Background(lipgloss.Color("62")).
-		Foreground(lipgloss.Color("230")).
+		Foreground(lipgloss.Color("#FFF")).
 		Padding(0, 1).
-		MarginRight(1)
+		MarginRight(1).
+		Bold(true)
 }

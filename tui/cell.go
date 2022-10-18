@@ -12,7 +12,7 @@ var (
 			Foreground(lipgloss.Color("212"))
 
 	focusedCursorLineStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("57")).
+				Background(lipgloss.Color("#684EFF")).
 				Foreground(lipgloss.Color("230"))
 
 	focusedStyle = lipgloss.NewStyle().

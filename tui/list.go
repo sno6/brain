@@ -15,7 +15,7 @@ import (
 var (
 	titleStyle = lipgloss.NewStyle().
 			MarginLeft(0).
-			Padding(0, 3).
+			Padding(0, 2).
 			Bold(true).
 			Foreground(lipgloss.Color("#FFF")).
 			Background(lipgloss.Color("#F25D94"))

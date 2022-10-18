@@ -13,7 +13,8 @@ const indexFn = ".index.bleve"
 type Mode uint8
 
 const (
-	Match Mode = iota
+	Keyword Mode = iota
+	Phrase
 	Fuzzy
 	Wildcard
 )
@@ -49,8 +50,10 @@ func (s *Search) Index(id string, data string) error {
 func (s *Search) Query(qs string, mode Mode) ([]string, error) {
 	var q query.Query
 	switch mode {
-	case Match:
+	case Keyword:
 		q = bleve.NewMatchQuery(qs)
+	case Phrase:
+		q = bleve.NewMatchPhraseQuery(qs)
 	case Wildcard:
 		q = bleve.NewWildcardQuery(qs)
 	case Fuzzy:
