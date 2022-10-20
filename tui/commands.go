@@ -22,13 +22,25 @@ func changePage(p Page) func() tea.Msg {
 	}
 }
 
-// A savedCell is a message type that is passed to an App update
-// when the user saves a cell.
-type savedCell string
+type deleteCellMessage string
 
-func saveCell(c savedCell) func() tea.Msg {
+func deleteCell(id string) func() tea.Msg {
 	return func() tea.Msg {
-		return c
+		return deleteCellMessage(id)
+	}
+}
+
+// A savedCell is a message type that is passed to an App update
+// when the user saves a cell. If docID is present the user is editing
+// the document and we should remove the original before writing the new value.
+type savedCell struct {
+	docID   string
+	content string
+}
+
+func saveCell(docID, content string) func() tea.Msg {
+	return func() tea.Msg {
+		return savedCell{docID: docID, content: content}
 	}
 }
 
@@ -48,10 +60,12 @@ func searchCommand(mode search.Mode, val string) func() tea.Msg {
 	}
 }
 
-type viewCellMessage string
+type viewCellMessage struct {
+	id, content string
+}
 
-func viewCellCommand(content string) func() tea.Msg {
+func viewCellCommand(id, content string) func() tea.Msg {
 	return func() tea.Msg {
-		return viewCellMessage(content)
+		return viewCellMessage{id: id, content: content}
 	}
 }

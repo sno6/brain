@@ -14,24 +14,24 @@ var appStyle = lipgloss.NewStyle().Padding(1, 2)
 type App struct {
 	brain *brain.Brain
 
-	curPage                     Page
-	width, height               int
-	index                       *indexModel
-	search                      *searchModel
-	cellList                    *cellListModel
-	writeCellView, readCellView *cellViewModel
+	curPage       Page
+	width, height int
+
+	index    *indexModel
+	search   *searchModel
+	cellList *cellListModel
+	cellView *cellViewModel
 }
 
 // NewApp returns a new tea.Model with all sub models.
 func NewApp(brain *brain.Brain, startingPage Page) *App {
 	return &App{
-		brain:         brain,
-		curPage:       startingPage,
-		index:         newIndexModel(),
-		search:        newSearchModel(),
-		cellList:      newCellListModel(),
-		writeCellView: newCellViewModel(PageWrite),
-		readCellView:  newCellViewModel(PageView),
+		brain:    brain,
+		curPage:  startingPage,
+		index:    newIndexModel(),
+		search:   newSearchModel(),
+		cellList: newCellListModel(),
+		cellView: newCellViewModel(),
 	}
 }
 
@@ -42,8 +42,7 @@ func (a *App) Init() tea.Cmd {
 		a.index.Init(),
 		a.search.Init(),
 		a.cellList.Init(),
-		a.readCellView.Init(),
-		a.writeCellView.Init(),
+		a.cellView.Init(),
 	)
 }
 
@@ -55,10 +54,8 @@ func (a *App) View() string {
 	case PageSearch:
 		s := lipgloss.JoinVertical(0, a.cellList.View(), a.search.View())
 		return appStyle.Render(s)
-	case PageWrite:
-		return appStyle.Render(a.writeCellView.View())
-	case PageView:
-		return appStyle.Render(a.readCellView.View())
+	case PageWrite, PageView:
+		return appStyle.Render(a.cellView.View())
 	}
 	return "<unknown page>"
 }
@@ -71,6 +68,8 @@ func (a *App) Start() error {
 // Update is the main app update loop, it updates all sub models,
 // and handles any and all calls out to the Brain interface.
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	// Exit out of the UI on ctrl+x and esc key presses.
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -84,16 +83,33 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// A sub-component has triggered a page change.
 	if p, ok := msg.(Page); ok {
+		a.cellView.setEditable(p == PageWrite)
 		a.curPage = p
+	}
+
+	if dm, ok := msg.(deleteCellMessage); ok {
+		// Delete the cell from our index.
+		a.brain.Delete(string(dm))
+
+		// Change the page back to search and rerun the last search query.
+		a.curPage = PageSearch
+		cmd = tea.Batch(cmd, a.searchBrain(searchMessage{
+			mode: a.search.modes[a.search.currModeIdx].mode,
+			val:  a.search.input.Value(),
+		}))
 	}
 
 	// The user has clicked ctrl+s on the write cell page.
 	if c, ok := msg.(savedCell); ok {
-		a.brain.Write(string(c))
+		if c.docID != "" {
+			a.brain.Delete(c.docID)
+		}
+
+		a.brain.Write(c.content)
 		return a, tea.Quit
 	}
 
-	cmd := a.updateSubModels(msg)
+	cmd = tea.Batch(cmd, a.updateSubModels(msg))
 
 	// The user has just stopped typing a query in the search bar.
 	// Send what they typed to Brain and create a tea.Cmd for the results,
@@ -111,10 +127,8 @@ func (a *App) updateSubModels(msg tea.Msg) tea.Cmd {
 	switch a.curPage {
 	case PageIndex:
 		a.index, cmd = a.index.Update(msg)
-	case PageWrite:
-		a.writeCellView, cmd = a.writeCellView.Update(msg)
-	case PageView:
-		a.readCellView, cmd = a.readCellView.Update(msg)
+	case PageWrite, PageView:
+		a.cellView, cmd = a.cellView.Update(msg)
 	case PageSearch:
 		var searchCmd, cellListCmd tea.Cmd
 		a.search, searchCmd = a.search.Update(msg)
@@ -131,8 +145,7 @@ func (a *App) propagateDimensions(width, height int) {
 	}
 
 	a.search.setDimensions(width, height)
-	a.writeCellView.setDimensions(width, height)
-	a.readCellView.setDimensions(width, height)
+	a.cellView.setDimensions(width, height)
 	a.cellList.setDimensions(width, height)
 }
 

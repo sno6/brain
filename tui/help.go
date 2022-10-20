@@ -44,6 +44,14 @@ func buildKeyMap(page Page) keyMap {
 			key.WithKeys("tab", "tab"),
 			key.WithHelp("tab", "toggle search"),
 		),
+		Delete: key.NewBinding(
+			key.WithKeys("x", "x"),
+			key.WithHelp("x", "delete"),
+		),
+		Edit: key.NewBinding(
+			key.WithKeys("e", "e"),
+			key.WithHelp("e", "edit"),
+		),
 		// Close a single view - stay in app.
 		Quit: key.NewBinding(
 			key.WithKeys("q", "q"),
@@ -61,6 +69,8 @@ type keyMap struct {
 	page Page
 
 	Save         key.Binding
+	Delete       key.Binding
+	Edit         key.Binding
 	ToggleSearch key.Binding
 	Quit         key.Binding
 	Exit         key.Binding
@@ -71,7 +81,7 @@ func (k keyMap) ShortHelp() []key.Binding {
 	case PageWrite:
 		return []key.Binding{k.Save, k.Exit}
 	case PageView:
-		return []key.Binding{k.Quit, k.Exit}
+		return []key.Binding{k.Edit, k.Delete, k.Quit, k.Exit}
 	case PageSearch:
 		return []key.Binding{k.ToggleSearch, k.Exit}
 	}
