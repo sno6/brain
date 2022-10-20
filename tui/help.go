@@ -18,6 +18,10 @@ func newHelpModel(page Page) *helpModel {
 	}
 }
 
+func (h *helpModel) setPage(p Page) {
+	h.keyMap.page = p
+}
+
 func (h *helpModel) Init() tea.Cmd {
 	return nil
 }

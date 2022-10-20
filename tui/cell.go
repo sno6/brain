@@ -23,7 +23,11 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("238"))
 
-	deleteQuestionStyle = lipgloss.NewStyle().MarginLeft(1)
+	deleteQuestionStyle = lipgloss.
+				NewStyle().
+				MarginLeft(1)
+
+	questionSelectedStyle = textCursorStyle.Bold(true)
 )
 
 type cellViewModel struct {
@@ -31,42 +35,28 @@ type cellViewModel struct {
 	help     *helpModel
 	editable bool
 
-	// The ID of the document in our index that we are
-	// currently referencing.
+	// The ID of the document that we are currently viewing.
 	currentDocID string
 
 	// The user has clicked 'x' on a cell, we track this state
-	// so we can hide the help and present a "Are you sure?" message.
-	deleteDialouge bool
-	deleteOption   bool
-}
-
-func (c *cellViewModel) setEditable(e bool) {
-	c.editable = e
-
-	if e {
-		c.text.Focus()
-		c.help = newHelpModel(PageWrite)
-	} else {
-		c.text.Blur()
-		c.help = newHelpModel(PageView)
-	}
+	// so we can hide the help and present an "Are you sure?" message.
+	deleteDialogOpen bool
+	deleteOption     bool
 }
 
 func newCellViewModel() *cellViewModel {
 	text := textarea.New()
-
 	text.Prompt = ""
 	text.Cursor.Style = textCursorStyle
 	text.FocusedStyle.CursorLine = focusedCursorLineStyle
 	text.FocusedStyle.Base = focusedStyle
 	text.BlurredStyle.Base = text.FocusedStyle.Base
 	text.CharLimit = -1
-	text.Blur()
 
 	return &cellViewModel{
-		text: text,
-		help: newHelpModel(PageView),
+		text:         text,
+		help:         newHelpModel(PageView),
+		deleteOption: true,
 	}
 }
 
@@ -81,17 +71,8 @@ func (c *cellViewModel) View() string {
 		c.text.View(),
 	}
 
-	if c.deleteDialouge {
-		var options string
-		if c.deleteOption {
-			options = textCursorStyle.Bold(true).Render("yes") + " / no"
-		} else {
-			options = "yes / " + textCursorStyle.Bold(true).Render("no")
-
-		}
-
-		views = append(views,
-			deleteQuestionStyle.Render(fmt.Sprintf("Are you sure? %s", options)))
+	if c.deleteDialogOpen {
+		views = append(views, c.renderDeleteDialog())
 	} else {
 		views = append(views, c.help.View())
 	}
@@ -100,59 +81,53 @@ func (c *cellViewModel) View() string {
 }
 
 func (c *cellViewModel) Update(msg tea.Msg) (*cellViewModel, tea.Cmd) {
-	if !c.editable {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.Type {
-			case tea.KeyTab, tea.KeyRight, tea.KeyLeft:
-				if !c.deleteDialouge {
-					break
-				}
-				c.deleteOption = !c.deleteOption
-			case tea.KeyEnter:
-				if !c.deleteDialouge {
-					break
-				}
-
-				if shouldDelete := c.deleteOption; shouldDelete {
-					docID := c.currentDocID
-					c.currentDocID = ""
-					c.deleteDialouge = false
-
-					return c, deleteCell(docID)
-				} else {
-					c.deleteDialouge = false
-					c.deleteOption = true
-				}
-			case tea.KeyRunes:
-				msgStr := msg.String()
-
-				if msgStr == "q" {
-					c.currentDocID = ""
-					c.deleteDialouge = false
-					return c, changePage(PageSearch)
-				}
-				if msgStr == "x" {
-					c.deleteDialouge = true
-					c.deleteOption = true
-				}
-				if msgStr == "e" {
-					c.setEditable(true)
-					return c, changePage(PageWrite)
-				}
-			}
-		}
-	}
-
 	if c.editable {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.Type {
 			case tea.KeyCtrlS:
-				docID := c.currentDocID
-				c.currentDocID = ""
+				id := c.currentDocID
+				c.reset()
 
-				return c, saveCell(docID, c.text.Value())
+				return c, saveCell(id, c.text.Value())
+			}
+		}
+	} else {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyTab, tea.KeyRight, tea.KeyLeft:
+				if !c.deleteDialogOpen {
+					break
+				}
+
+				c.deleteOption = !c.deleteOption
+			case tea.KeyEnter:
+				if !c.deleteDialogOpen {
+					break
+				}
+
+				if c.deleteOption {
+					id := c.currentDocID
+					c.reset()
+
+					return c, deleteCell(id)
+				} else {
+					// User selected "no", close dialog and reset option to "yes".
+					c.deleteDialogOpen = false
+					c.deleteOption = true
+				}
+			case tea.KeyRunes:
+				switch msg.String() {
+				case "x":
+					c.deleteDialogOpen = true
+				case "e":
+					c.setEditable(true)
+					return c, changePage(PageWrite)
+				case "q":
+					c.reset()
+					return c, changePage(PageSearch)
+				}
 			}
 		}
 	}
@@ -168,7 +143,36 @@ func (c *cellViewModel) Update(msg tea.Msg) (*cellViewModel, tea.Cmd) {
 	return c, tea.Batch(helpCmd, textCmd)
 }
 
+func (c *cellViewModel) renderDeleteDialog() string {
+	var options string
+	if c.deleteOption {
+		options = questionSelectedStyle.Render("yes") + " / no"
+	} else {
+		options = "yes / " + questionSelectedStyle.Render("no")
+	}
+
+	return deleteQuestionStyle.Render(fmt.Sprintf("Are you sure? %s", options))
+}
+
 func (c *cellViewModel) setDimensions(width, height int) {
 	c.text.SetWidth(width - 5)
 	c.text.SetHeight(int(float64(height) * 0.7))
+}
+
+func (c *cellViewModel) setEditable(e bool) {
+	if e {
+		c.text.Focus()
+		c.help.setPage(PageWrite)
+		c.editable = true
+	} else {
+		c.text.Blur()
+		c.help.setPage(PageView)
+		c.editable = false
+	}
+}
+
+func (c *cellViewModel) reset() {
+	c.currentDocID = ""
+	c.deleteDialogOpen = false
+	c.deleteOption = true
 }
