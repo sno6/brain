@@ -45,6 +45,11 @@ func (s *Search) Index(id string, data string) error {
 	return s.index.Index(id, data)
 }
 
+// Delete removes a document from the index by its ID.
+func (s *Search) Delete(id string) error {
+	return s.index.Delete(id)
+}
+
 // Query runs a match query on the index and returns the document
 // ids if there are any matches
 func (s *Search) Query(qs string, mode Mode) ([]string, error) {

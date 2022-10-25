@@ -26,12 +26,15 @@ func NewCell(offset int64, data string) *Cell {
 	}
 }
 
-func ParseCell(offset int64, data string) *Cell {
+func ParseCell(offset int64, data string) (*Cell, error) {
+	if len(data) < 11 {
+		return nil, errors.New("data does not include timestamp")
+	}
 	return &Cell{
 		offset: offset,
-		data:   data,
+		data:   data[11:],
 		ts:     parseTimestamp(data),
-	}
+	}, nil
 }
 
 func (c *Cell) Identifier() string {

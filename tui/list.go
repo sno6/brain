@@ -72,7 +72,11 @@ func (c *cellListModel) Update(msg tea.Msg) (*cellListModel, tea.Cmd) {
 		case tea.KeyEnter:
 			c, ok := c.cells.SelectedItem().(cell)
 			if ok {
-				cmd = tea.Batch(cmd, viewCellCommand(c.data), changePage(PageView))
+				cmd = tea.Batch(
+					cmd,
+					viewCellCommand(c.id, c.data),
+					changePage(PageView),
+				)
 			}
 		}
 	}
@@ -96,6 +100,7 @@ func (c *cellListModel) updateListItems(items listItems) {
 	cells := make([]list.Item, len(items))
 	for i, item := range items {
 		cells[i] = cell{
+			id:   item.Identifier(),
 			data: item.Data(),
 			ts:   item.Timestamp(),
 		}
@@ -114,6 +119,7 @@ func (c *cellListModel) View() string {
 
 // A cell is the UI element for a row in the list.
 type cell struct {
+	id   string
 	data string
 	ts   time.Time
 }
@@ -153,9 +159,6 @@ func (d cellDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 const previewLength = 70
 
 func preview(data string) string {
-	// Exclude the date portion of the cell.
-	data = data[11:]
-
 	if nl := strings.Index(data, "\n"); nl > -1 {
 		var prev string
 		if nl > previewLength {

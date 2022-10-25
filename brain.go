@@ -55,7 +55,6 @@ func (b *Brain) Write(s string) error {
 	if err := b.writeCell(cell); err != nil {
 		return err
 	}
-
 	return b.search.Index(cell.Identifier(), s)
 }
 
@@ -78,6 +77,16 @@ func (b *Brain) List(query string, mode search.Mode) ([]*Cell, error) {
 	return b.readCells(ids)
 }
 
+// Delete removes a document from the index by its ID.
+//
+// The underlying data will remain in the data file, we are only
+// removing the pointer to the data. We do this because document ids
+// are offset references and deleting previous records would require
+// a re-index of all records > n.
+func (b *Brain) Delete(id string) error {
+	return b.search.Delete(id)
+}
+
 func (b *Brain) buildCellFromData(data string) (*Cell, error) {
 	offset, err := size(b.data)
 	if err != nil {
@@ -97,7 +106,7 @@ func (b *Brain) readCell(offset, size int64) (*Cell, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ParseCell(offset, string(buf)), nil
+	return ParseCell(offset, string(buf))
 }
 
 func (b *Brain) readCells(ids []string) ([]*Cell, error) {
