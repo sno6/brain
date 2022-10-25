@@ -106,7 +106,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		a.brain.Write(c.content)
-		return a, tea.Quit
+		return a, tea.Batch(cmd, changePage(PageSearch))
 	}
 
 	cmd = tea.Batch(cmd, a.updateSubModels(msg))

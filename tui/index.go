@@ -26,14 +26,6 @@ func newIndexModel() *indexModel {
 			description: "Search and view contents of a cell",
 			page:        PageSearch,
 		},
-		actionItem{
-			title:       "Learn",
-			description: "Spaced repetition learning",
-		},
-		actionItem{
-			title:       "Help",
-			description: "View all available commands",
-		},
 	}
 
 	actions := list.New(listItems, actionDelegate{}, 60, len(listItems)+3)
